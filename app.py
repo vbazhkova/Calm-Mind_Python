@@ -77,15 +77,15 @@ for collection in collections:
     
 ### API Methods     
 
-# Регистриуем нового юзера
+# Register new user
 @app.route("/register", methods=['POST'])
 def register():
-    # Генерируем user_id
+    # Generate user_id
     userId = generateUserId()
     while isUserExists(userId) == True:
         userId = generateUserId()
         
-    # Создаём модели для записи в БД    
+    # Creating models to be written to the database    
     newUser = User(name = request.form.get("name"),
                    email = request.form.get("email"),
                    login = request.form.get("login"),
@@ -110,7 +110,7 @@ def register():
         "userId" : userId
     }
 
-# Проверяем существует ли пользователь    
+# Check if the user exists    
 def isUserExists(userId):
     isExists = False
     for item in UserPassword.objects:
@@ -124,17 +124,17 @@ def isUserExists(userId):
 def generateUserId():
     return randint(1, 1_000_000)    
 
-# Авторизуемся и получаем данные юзера
+# Log in and get the user's data
 @app.route("/login", methods=['POST'])
 def login():
-    # На входе поулчам логин и пароль
+    # At the login we get a username and password
     login = request.form.get("login")
     password = request.form.get("password")
     
     response = {}
     userId = 0
     
-    # Находим пользователя в БД
+    # Find a user in the database
     for item in UserPassword.objects:
         if item.login == login and item.password == password:
             userId = item.userId
@@ -146,7 +146,7 @@ def login():
                         "email" : user.email
                         }
     
-    # Возвращаем ответ
+    # Returning the answer
     if response != {}:
         launchTime = time.time()
         User.objects(userId=userId).update_one(set__launchTime = launchTime)
@@ -154,16 +154,16 @@ def login():
     else:
         return "Wrong login or password. Please, try again"
     
-# Восстановить пароль
+# Recover password
 @app.route("/reset/password", methods=['POST'])
 def resetPassword():
-    # Для восстановления пароля можно ввести логин или почту
+    # You can enter your login or email to recover your password
     email = request.form.get("email")
     login = request.form.get("login")
     
     emailToSend = None
     
-    # Находим есть ли логин или пароль в БД
+    # Find out if there is a login or password in the database
     if email != None:
         for user in User.objects:
             if user.email == email:
@@ -180,22 +180,22 @@ def resetPassword():
     else:
         return "The user with the specified username/password does not exist"
 
-# Отправляем ссылку для восстановления пароля                
+# Send a link to recover your password    
 def sendEmail(email):
     return "Email send!"
                 
-### 1 ЭКРАН    
-# Получаем данные для экрана активностей
+### 1 Screen    
+# Getting data for the activity screen
 @app.route('/activities', methods=['GET'])
 def sendActivities():
-    # Достаём из БД категории продуктов и продукты
+    # Retrieve product categories and products from the database
     categoryTypes = CategoryTypes.objects
     products = Product.objects   
     
     response = {}
     response["categoryTypes"] = []
     
-    # Циклом находим все активности и возвращаем их для отображения
+    # Cycle to find all activities and return them for display
     for type in categoryTypes:
         categoriesOfType = []
         
@@ -215,17 +215,17 @@ def sendActivities():
  
     return response                     
     
-# Получаем данные для перехода в любую из возможных активностей
+# We get the data for switching to any of the possible activities
 @app.route('/activities/types', methods=['POST']) 
 def getAndSendActivity():
-    # На вход ожидаем категорию, id пользователя и id продукта
+    # For input we expect category, user id and product id
     categoryType = request.form.get("categoryType")
     prodId = request.form.get("prod_id")
     
     productToReturn = None
     techniques = []
     
-    # Находим выбранную активность в БД и возвращаем её
+    # Find the selected activity in the database and return it
     products = Product.objects 
     for prod in products:
         if prod.prod_id == int(prodId) and prod.categoryType == int(categoryType):
@@ -241,9 +241,9 @@ def getAndSendActivity():
             if item.name == tech:
                 productTechs[tech] = item.to_json()                            
     
-    # Проверяем что нашли активность и возвращаем её    
+    # Check that we found the activity and return it  
     if productToReturn != None:
-        # Если имя продукта сходится с заготовленными, то добавляем варинаты взаимодействия с сервисом, иначе, возвращаем заглушку
+        # If the name of the product matches the prepared ones, then we add variants of interaction with the service, otherwise, we return the stub
         match productToReturn.prod_name:
             case "Pomodoro":
                 return {
@@ -273,7 +273,7 @@ def getAndSendActivity():
     else:
         return "None"   
 
-# Находим рейтинг активности 
+# Find the activity rating 
 def findRatingForActivity(techId, userId):
     ratings = []
     for item in Statistics.objects:
@@ -281,7 +281,7 @@ def findRatingForActivity(techId, userId):
             ratings = item.ratings
             break
     
-    # Сопоставляем techId        
+    # Matching techId        
     result = 0
     for rate in ratings:
         if rate['tech_id'] == int(techId):
@@ -290,15 +290,15 @@ def findRatingForActivity(techId, userId):
     
     return result       
 
-# Запускаем технику и получаем для нее пользовaтельский рейтинг
+# Launch a technique and get a user rating for it
 @app.route('/activities/techniques/start', methods=['GET'])
 def startTechnic():
-    # На вход ожидаем id техники
+    # To enter, expect a technique id
     techId = request.args.get("tech_id")
     userId = request.args.get("user_id")
     technic = {}
 
-    # Находим технику в БД
+    # Find a technique in the database
     for item in Techniques.objects:
         if int(techId) ==  item.tech_id:
             technic = item.to_json()
@@ -309,10 +309,10 @@ def startTechnic():
         'rating' : findRatingForActivity(techId, userId)
     }
     
-# Оцениваем технику активности
+# Evaluating activity techniques
 @app.route('/activities/techniques/rate', methods=['POST'])
 def rateTechic():
-    # На вход ожидаем tech_id, user_id и новый рейтинг
+    # For input we expect tech_id, user_id and new rating
     techId = request.form.get("tech_id")
     userId = request.form.get("user_id")
     rate = request.form.get("rating")
@@ -320,13 +320,13 @@ def rateTechic():
     statItem = {}
     ratings = []
     
-    # Находим рейтинги пользователя
+    # Find user ratings
     for item in Statistics.objects:
         if item.user_id == int(userId):
             ratings = item.ratings
             break
     
-    # Находим оценку техники, если она уже есть
+    # Find an estimate of the technique, if it already exists
     selectedTechRating = 0
     for item in ratings:
         if item['tech_id'] == int(techId):
@@ -334,13 +334,13 @@ def rateTechic():
            statItem = item
            break
     
-    # Создаем новую модель рейтинга
+    # Creating a new rating model
     newRating = {
         'rating' : int(rate),
         'tech_id' : int(techId)
     }
     
-    # Если оценки техники ещё не было, то добавляем новую, иначе перезаписываем старую
+    # If there has been no assessment of a technique, we add a new one, otherwise we overwrite the old one
     userId = int(userId)
     if selectedTechRating == 0:
         Statistics.objects(user_id=userId).update_one(push__ratings = newRating)
@@ -350,15 +350,15 @@ def rateTechic():
         Statistics.objects(user_id=userId).update_one(push__ratings = newRating)
         return "Your old rating was overwriten"
     
-### 2 ЭКРАН
-# Получаем имя юзера (вообще мы его уже вернули при логине, но на случай если программистам снова понадобятся данные)
+### 2 Screen
+# Get the username of the user (in fact, we already returned it during login, but in case the programmers need the data again)
 @app.route('/user', methods=['GET']) 
 def sendUser():
     response = {}
-    # На вход ожидаем user id
+    # We expect a user id for input
     userId = request.args.get("user_id")
     
-    # Находим юзера и возвращаем его
+    # Find the user and bring him back
     for user in User.objects:
         if str(user.userId) == userId:
             response = {
@@ -372,13 +372,13 @@ def sendUser():
     else: 
         return "User not found"
 
-# Получаем совет дня из стороннего API
+# Getting the tip of the day from a third-party API
 @app.route('/advice', methods=['GET']) 
 def getAndSendAdvice():
     advice = requests.get('https://api.adviceslip.com/advice')
     return advice.json()['slip']['advice']
 
-# Пользователь оценивает своё текущее настроение по шкале 1-5 с помощью эмодзи, где 1 -- очень плохо, а 5 -- очень хорошо
+# The user rates his current mood on a scale of 1-5 using emoji, where 1 is very bad and 5 is very good
 @app.route('/recieve/currentMood', methods=['POST']) 
 def setCurrentMood():
     userId = request.form.get("user_id")
@@ -393,7 +393,7 @@ def setCurrentMood():
     
     return "Mood successfully recorded!"
 
-# Создаём файл prod.csv для датасета аналогично recomendation.csv
+# Create a prod.csv file for the dataset like recomendation.csv
 def createProdsDF():
     if(os.path.exists('prod.csv') and os.path.isfile('prod.csv')):
         os.remove('prod.csv')
@@ -418,19 +418,19 @@ def createProdsDF():
     
     return filecsv
 
-# Получить список рекомендаций на основе отзывов пользователя
+# Get a list of recommendations based on user feedback
 @app.route('/recomendations', methods=['GET']) 
 def getRecomendations():
-    # На вход ожидаем userId
+    # We expect userId as an input
     userId = request.args.get("user_id")
     
-    # Создаём файл recomendation.csv для датасета
+    # Create a recomendation.csv file for the dataset
     file = 'recomendation.csv'
-    # Удаляем старый если он уже был создан ранее
+    # Delete the old one if it was already created earlier
     if(os.path.exists(file) and os.path.isfile(file)):
         os.remove(file)
     
-    # Открываем файл и заполняем хедер таблицы
+    # Open the file and fill in the table header
     filecsv = open(file, 'a+')
     writer = csv.writer(filecsv)
     header = ["userId", "productId", "rating"]
@@ -439,16 +439,16 @@ def getRecomendations():
     statRatings = []
     ids = []
     
-    # Находим данные из таблицы со статистикой
+    # Find the data from the table with statistics
     for item in Statistics.objects:
         statRatings.append(item.ratings)
         ids.append(item.user_id)  
-        # Возвращаем сообщение о необходимости оставить больше оценок, чтобы мы могли создать подборку для пользователя
+        # Return a message telling us to leave more ratings so that we can create a selection for the user
         if int(userId) == item.user_id and len(item.ratings) < 11:
             print(userId, item.user_id)
             return "Please, set more ratings for techniques to allow us make recommendations to you"    
 
-    # Находим рейтинги активностей
+    # Finding activity ratings
     techIds = []
     ratingsValues = []
     userIds = []  
@@ -460,7 +460,7 @@ def getRecomendations():
     
     fullData = []
     
-    # Заполняем данные для датасета
+    # Filling data for the dataset
     for index, item in enumerate(techIds):
         smallData = []
         smallData.append(userIds[index])
@@ -468,25 +468,25 @@ def getRecomendations():
         smallData.append(ratingsValues[index])
         fullData.append(smallData)
     
-    # Записываем данные в файл 
+    # Writing data to a file 
     writer.writerows(fullData)
     
-    # Создаём второй датасет
+    # Create a second dataset
     prodcsv = createProdsDF() 
     
-    # После изменений в датасетах подготавливаем их к работе
+    # After changes in datasets we prepare them for work
     filecsv.seek(0)
     prodcsv.seek(0)
     
-    # Загружаем датасеты
+    # Loading datasets
     prod = pd.read_csv(prodcsv)
     rat = pd.read_csv(filecsv)
 
-    # Делаем копии
+    # Making copies
     recProd = prod.copy(deep=True)
     recRat = rat.copy(deep=True)
     
-    # Объединяем в одну таблицу
+    # Combine into one table
     user_prod = pd.merge(recRat, recProd, on = "productId")
     
     idUser = int(userId)
@@ -543,15 +543,15 @@ def getRecomendations():
         
     return response
 
-### 3 ЭКРАН
-# Получаем статистику пользователя, отображаем html страницу с помощью jinja2
+### 3 Screen
+# Get user statistics, display html page with jinja2
 @app.route('/user/statistics', methods=['GET']) 
 def sendStatistics():
     response = {}
-    # На вход ожидаем user id
+    # We expect a user id for input
     userId = request.args.get("user_id")
     
-    # Находим данные из таблицы со статистикой
+    # Find the data from the table with statistics
     for item in Statistics.objects:
         if item.user_id == int(userId):
             response = {
@@ -559,7 +559,7 @@ def sendStatistics():
             "calm_mins" : item.calm_mins
             }
             
-    # Нахоодим данные о пользователе
+    # Find user data
     userModel = {}
     for user in User.objects:
         if str(user.userId) == userId:
@@ -571,7 +571,7 @@ def sendStatistics():
                 "login" : user.login
                 }
 
-    # Собираем итоговый JSON для отображения на странице
+    # Creating the final JSON to display on the page
     if response != {}:        
         modelEx = {'name':  userModel['name'], 
                    'email': userModel['email'],
@@ -579,36 +579,36 @@ def sendStatistics():
                    'dateReg' : userModel['dateReg'],
                    'login' : userModel['login']
                     }
-        # Отрисовываем страницу
+        # Drawing the page
         j2_env = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'),trim_blocks=True)
         return j2_env.get_template('userInfo.html').render(modelEx)
   
     else: 
         return "User not found"
 
-# Получаем оценки пользователя
+# Getting user ratings
 @app.route('/user/ratings', methods=['GET'])
 def sendRatings():
-    # На вход ожидаем user id
+    # We expect a user id for input
     userId = request.args.get("user_id")
     
     statRatings = {}
     
-    # Находим данные из таблицы со статистикой
+    # Find the data from the table with statistics
     for item in Statistics.objects:
         if item.user_id == int(userId):
             statRatings = {
             "ratings" : item.ratings
             }
 
-    # Находим рейтинги активностей
+    # Finding activity ratings
     techIds = []
     ratingsValues = []  
     for item in statRatings['ratings']:  
         techIds.append(item['tech_id']) 
         ratingsValues.append(item['rating'])  
     
-    # По id рейтинов находим их названия
+    # Use the id of the ratings to find their names
     ratings = []
     for item in Techniques.objects:
         if item.tech_id in techIds:
@@ -625,10 +625,10 @@ def sendRatings():
     
     return response
     
-# При закрытии приложения
+# When closing the app
 @app.route('/end', methods=['GET'])
 def onEnd():
-    # На вход ожидаем user id
+    # We expect a user id for input
     userId = request.args.get("user_id")
     calmMins = 0
     launchTime = 0
